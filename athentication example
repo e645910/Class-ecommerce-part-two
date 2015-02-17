@@ -1,0 +1,84 @@
+var Express = require('express');
+var App = Express();
+var Passport = require('passport');
+var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+var BodyParser = require('body-parser');
+var Session  = require('express-session');
+var Mongoose = require('mongoose');
+
+var port = 9001;
+var mongoURI = 'localhost:27017/full-stack-ecommerce';
+
+var userCtrl = require('./server-assets/controllers/user-control');
+
+Passport.serializeUser(function(user, done){
+	done(null, user);
+});
+
+Passport.deserializeUser(function(obj, done){
+	userCtrl.getUser(obj.id).then(function(results){
+		done(null, results);
+	}, function(err){
+		done(err, null);
+	})
+});
+
+
+App.use(Express.static(__dirname + '/public'));
+App.use(BodyParser.json());
+App.use(Session({ secret: 'EcommerceSIKRIT' }));
+App.use(Passport.initialize());
+App.use(Passport.session());
+
+
+Passport.use(new GoogleStrategy({
+	clientID: '905997708468-grobrc8ocd5a9fd23c025da5kk3l1t95.apps.googleusercontent.com',
+	clientSecret: '7zabuthLvTJ9Pmh4gEGLrt72',
+	callbackURL: 'http://localhost:9001/auth/google/callback'
+}, function(token, tokenSecret, profile, done){
+	userCtrl.updateOrCreate(profile).then(function(results){
+		done(null, profile);
+	}, function(err){
+		done(err, profile);
+	})
+}));
+
+App.get('/auth/google', Passport.authenticate('google', { scope: 'https://www.googleapis.com/auth/plus.login' }));
+
+App.get('/auth/google/callback', Passport.authenticate('google', {
+	failureRedirect: '/auth/failure'
+}), function(req, res){
+	res.redirect('/api/me');
+});
+
+App.get('/api/me', function(req, res){
+	return res.json(req.user);
+});
+
+Mongoose.connect(mongoURI, function(){
+	console.log('Connected to MongoDB at: ' + mongoURI);
+})
+
+App.listen(port, function(){
+	console.log('Now listening on port: ' + port);
+});
+
+-------------------- my google client inf0 ----------------------
+ 
+
+
+Create Client ID
+Client ID for web application
+
+CLIENT ID 698982842141-nd171aik9lq3dkn69m0lfie64duhfsi0.apps.googleusercontent.com 
+EMAIL ADDRESS  698982842141-nd171aik9lq3dkn69m0lfie64duhfsi0@developer.gserviceaccount.com  
+CLIENT SECRET  I_sPSdLOc9YauDKB1L7UHP13  
+REDIRECT URIS  
+https://www.example.com/oauth2callback
+ JAVASCRIPT ORIGINS 
+https://www.example.com
+
+
+
+
+
